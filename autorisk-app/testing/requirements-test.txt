@@ -1,0 +1,8 @@
+# Test-only dependencies. Install into the backend venv (the tests import the
+# backend app directly):
+#   backend\.venv\Scripts\python.exe -m pip install -r testing\requirements-test.txt
+#   backend\.venv\Scripts\python.exe -m playwright install chromium
+pytest==9.2.0
+pytest-html>=4.1
+httpx==0.28.1
+pytest-playwright>=0.7

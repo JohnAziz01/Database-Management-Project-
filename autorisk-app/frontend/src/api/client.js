@@ -1,20 +1,26 @@
-/**
- * LESSON: a tiny wrapper around fetch().
- *
- * In the old HTML/mock-data version, every page read from a hardcoded
- * MOCK object. Now, every page calls one of the functions below, which
- * calls the real FastAPI backend, which queries real PostgreSQL.
- *
- * Centralizing fetch logic here means: one place to add the auth token,
- * one place to handle errors consistently, and pages themselves stay
- * simple ("give me the policyholders" instead of "build a fetch request").
- */
-
 const BASE_URL = "/api"; // the Vite dev proxy forwards this to FastAPI
 
 function authHeaders() {
   const token = localStorage.getItem("autorisk_token");
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
+ * FastAPI sends { "detail": "some text" } for most errors, but for 422
+ * validation errors `detail` is a LIST like
+ *   [{ loc: ["body", "email"], msg: "value is not a valid email address", ... }]
+ * Passing that list straight to `new Error()` displayed "[object Object]"
+ * (BUG-018). Turn it into readable text instead.
+ */
+function formatDetail(detail) {
+  if (!Array.isArray(detail)) return detail;
+  return detail
+    .map((e) => {
+      const field = (e.loc || []).filter((p) => p !== "body").join(".");
+      const msg = (e.msg || "").replace(/^Value error, /, "");
+      return field ? `${field.replaceAll("_", " ")}: ${msg}` : msg;
+    })
+    .join("; ");
 }
 
 async function request(path, options = {}) {
@@ -27,12 +33,21 @@ async function request(path, options = {}) {
     },
   });
 
+  // Token missing/expired/rejected on a protected call: the saved session is
+  // no longer valid, so sign out and go to the login page (BUG-024: the UI
+  // used to keep looking "logged in" with a dead token).
+  if (res.status === 401 && path !== "/auth/login") {
+    localStorage.removeItem("autorisk_token");
+    localStorage.removeItem("autorisk_user");
+    window.location.assign("/login");
+    throw new Error("Your session has expired. Please sign in again.");
+  }
+
   if (!res.ok) {
-    // FastAPI sends { "detail": "..." } on errors — surface it.
     let detail = res.statusText;
     try {
       const body = await res.json();
-      detail = body.detail || detail;
+      detail = formatDetail(body.detail) || detail;
     } catch {
       /* response wasn't JSON, keep statusText */
     }
@@ -68,5 +83,6 @@ export const api = {
     return request(`/vehicles${qs ? `?${qs}` : ""}`);
   },
 
+  getQuoteOptions: () => request("/quote/options"),
   getQuote: (payload) => request("/quote", { method: "POST", body: JSON.stringify(payload) }),
 };

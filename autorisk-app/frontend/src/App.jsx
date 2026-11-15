@@ -1,12 +1,3 @@
-/**
- * LESSON: React Router's route tree.
- *
- * <Routes> looks at the current URL and renders whichever <Route> matches.
- * Nesting matters here: everything nested inside the RequireAuth ->
- * Layout routes automatically gets the sidebar/topbar AND the login
- * check, without each page having to remember to add either one. This
- * is the same "wrap once, reuse everywhere" idea as Layout.jsx itself.
- */
 import { Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import RequireAuth from "./components/RequireAuth";

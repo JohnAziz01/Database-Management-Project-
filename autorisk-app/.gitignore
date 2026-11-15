@@ -13,3 +13,15 @@ frontend/dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+.neon
+.env.local
+node_modules/
+
+# Test suite (generated / local)
+testing/.env.test
+testing/reports/
+.pytest_cache/
+
+# Teaching material (kept on disk, not in the repo)
+/README.md
+testing/docs/LEARNING_GUIDE.md

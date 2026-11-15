@@ -1,15 +1,3 @@
-/**
- * LESSON 1: Every React app has one entry point.
- *
- * `ReactDOM.createRoot(...).render(<App />)` tells React: "take over this
- * one <div id="root"> in index.html, and from now on YOU decide what's
- * inside it." Everything the user sees is produced by the <App /> component
- * tree below — there is no more hand-written HTML after this point.
- *
- * <React.StrictMode> is a dev-only helper that intentionally double-runs
- * some code to help you catch bugs (like side effects in the wrong place).
- * It does nothing in production and is safe to leave in.
- */
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";

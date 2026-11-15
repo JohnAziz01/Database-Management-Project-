@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, auth
@@ -10,9 +11,16 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/login", response_model=schemas.LoginResponse)
 def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
-    account = db.query(models.Account).filter(models.Account.email == payload.email).first()
+    auth.check_login_allowed(payload.email)  # BUG-017: 429 after too many failures
+    account = (
+        db.query(models.Account)
+        .filter(func.lower(models.Account.email) == payload.email)  # email is lower-cased by the schema
+        .first()
+    )
     if account is None or not auth.verify_password(payload.password, account.password_hash):
+        auth.record_failed_login(payload.email)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    auth.clear_failed_logins(payload.email)
     if not account.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is disabled")
 

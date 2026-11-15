@@ -1,13 +1,3 @@
-/**
- * LESSON: useEffect + data fetching, loading/error state, lists & keys.
- *
- * useState alone can't fetch data on its own — components need a way to
- * say "when I first appear on screen, go get some data". That's useEffect:
- * a function that runs after render, plus a *dependency array* that
- * controls when it re-runs. `[]` (empty array) means "run once, right
- * after the first render" — the React equivalent of the old inline
- * <script> at the bottom of dashboard.html that ran once on page load.
- */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";

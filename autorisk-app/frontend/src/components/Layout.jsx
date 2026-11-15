@@ -1,12 +1,3 @@
-/**
- * LESSON: layout components + <Outlet>.
- *
- * In the old app, every page (dashboard.html, claims.html, ...) duplicated
- * <div id="app-shell"> and called renderShell(). In React we write that
- * shell ONCE as <Layout>, and each individual page becomes the "hole" that
- * react-router drops into <Outlet />. See App.jsx for how routes nest
- * inside this layout.
- */
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 

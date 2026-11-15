@@ -1,23 +1,3 @@
-/**
- * LESSON: React Context = "global state without prop drilling".
- *
- * Without context, if <App> knew the logged-in user, and a deeply nested
- * <Sidebar><UserBadge> needed it too, you'd have to pass `user` as a prop
- * through every component in between, even ones that don't care about it.
- * That's called "prop drilling" and it gets painful fast.
- *
- * Context lets any descendant component "subscribe" directly:
- *   const { user, login, logout } = useAuth();
- * no matter how deeply nested it is.
- *
- * Steps to build a context:
- *   1. createContext()            -> the "channel"
- *   2. a Provider component       -> holds the actual state (useState) and
- *                                    broadcasts it down the tree
- *   3. a custom hook (useAuth)    -> a convenience wrapper so components
- *                                    don't need to import useContext + the
- *                                    context object every time
- */
 import { createContext, useContext, useState, useCallback } from "react";
 import { api } from "../api/client";
 

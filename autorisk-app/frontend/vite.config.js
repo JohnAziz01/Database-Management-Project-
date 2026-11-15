@@ -11,7 +11,9 @@ export default defineConfig({
     // dev (the browser thinks it's all one origin: localhost:5173).
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        // API_PROXY_TARGET lets the automated E2E tests (testing/e2e) point
+        // a second dev server at their own backend + test database.
+        target: process.env.API_PROXY_TARGET || "http://localhost:8000",
         changeOrigin: true,
       },
     },

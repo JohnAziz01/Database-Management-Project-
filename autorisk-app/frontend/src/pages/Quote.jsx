@@ -1,10 +1,3 @@
-/**
- * LESSON: a bigger form with many controlled fields, POSTing to a
- * calculation endpoint, and rendering the structured result. This mirrors
- * quote.html but the numbers are now real, computed by
- * backend/app/pricing.py against a rate table row actually stored in
- * Postgres.
- */
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 
@@ -19,22 +12,32 @@ const initialForm = {
 };
 
 export default function Quote() {
-  const [regions, setRegions] = useState([]);
-  const [coverages, setCoverages] = useState([]);
+  // BUG-009 fix: instead of every region x every coverage, load only the
+  // pairs that have a current rate table, so every choice can be priced.
+  const [options, setOptions] = useState([]);
   const [form, setForm] = useState(initialForm);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    Promise.all([api.getRegions(), api.getCoverages()]).then(([r, c]) => {
-      setRegions(r);
-      setCoverages(c);
-    });
+    api.getQuoteOptions().then(setOptions).catch((err) => setError(err.message));
   }, []);
 
+  // Unique regions that have at least one priced coverage...
+  const regions = [...new Map(options.map((o) => [o.region_id, o.region_name])).entries()];
+  // ...and the coverages priced in the region currently selected.
+  const coverages = options.filter((o) => String(o.region_id) === form.region_id);
+
   function update(field, value) {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Changing region clears a coverage that isn't priced in the new region.
+      if (field === "region_id" && !options.some((o) => String(o.region_id) === value && String(o.coverage_id) === prev.coverage_id)) {
+        next.coverage_id = "";
+      }
+      return next;
+    });
   }
 
   async function handleSubmit(e) {
@@ -66,8 +69,9 @@ export default function Quote() {
           <div className="form-section-title">Driver &amp; Vehicle</div>
           <div className="form-grid">
             <div className="form-group">
-              <label>Date of Birth</label>
+              <label htmlFor="q-dob">Date of Birth</label>
               <input
+                id="q-dob"
                 className="form-control"
                 type="date"
                 value={form.date_of_birth}
@@ -76,8 +80,9 @@ export default function Quote() {
               />
             </div>
             <div className="form-group">
-              <label>License Issue Date</label>
+              <label htmlFor="q-license-date">License Issue Date</label>
               <input
+                id="q-license-date"
                 className="form-control"
                 type="date"
                 value={form.license_issue_date}
@@ -86,8 +91,9 @@ export default function Quote() {
               />
             </div>
             <div className="form-group">
-              <label>Bonus-Malus Coefficient</label>
+              <label htmlFor="q-bonus-malus">Bonus-Malus Coefficient</label>
               <input
+                id="q-bonus-malus"
                 className="form-control"
                 type="number"
                 step="0.01"
@@ -99,8 +105,9 @@ export default function Quote() {
               />
             </div>
             <div className="form-group">
-              <label>Vehicle Manufacture Year</label>
+              <label htmlFor="q-vehicle-year">Vehicle Manufacture Year</label>
               <input
+                id="q-vehicle-year"
                 className="form-control"
                 type="number"
                 value={form.vehicle_manufacture_year}
@@ -109,8 +116,9 @@ export default function Quote() {
               />
             </div>
             <div className="form-group">
-              <label>Vehicle Power (kW)</label>
+              <label htmlFor="q-vehicle-power">Vehicle Power (kW)</label>
               <input
+                id="q-vehicle-power"
                 className="form-control"
                 type="number"
                 value={form.vehicle_power_kw}
@@ -119,30 +127,33 @@ export default function Quote() {
               />
             </div>
             <div className="form-group">
-              <label>Region</label>
+              <label htmlFor="q-region">Region</label>
               <select
+                id="q-region"
                 className="form-control"
                 value={form.region_id}
                 onChange={(e) => update("region_id", e.target.value)}
                 required
               >
                 <option value="">Select…</option>
-                {regions.map((r) => (
-                  <option key={r.region_id} value={r.region_id}>
-                    {r.name}
+                {regions.map(([id, name]) => (
+                  <option key={id} value={id}>
+                    {name}
                   </option>
                 ))}
               </select>
             </div>
             <div className="form-group">
-              <label>Coverage</label>
+              <label htmlFor="q-coverage">Coverage</label>
               <select
+                id="q-coverage"
                 className="form-control"
                 value={form.coverage_id}
                 onChange={(e) => update("coverage_id", e.target.value)}
+                disabled={!form.region_id}
                 required
               >
-                <option value="">Select…</option>
+                <option value="">{form.region_id ? "Select…" : "Choose a region first"}</option>
                 {coverages.map((c) => (
                   <option key={c.coverage_id} value={c.coverage_id}>
                     {c.coverage_name}

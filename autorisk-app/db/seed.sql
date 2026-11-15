@@ -19,6 +19,20 @@ INSERT INTO rate_table (region_id, coverage_id, effective_date, base_rate, age_f
     (3, 1, '2026-01-01', 380.00, 1.50, 1.05, 1.04, 1.00),
     (4, 1, '2026-01-01', 520.00, 1.75, 1.15, 1.08, 1.00);
 
+-- BUG-009 fix: rate tables for the other coverages, so every coverage the
+-- Quote form offers in Regions A/B/C can actually be priced.
+-- (coverage 2 = Collision, 3 = Comprehensive, 4 = Uninsured Motorist)
+INSERT INTO rate_table (region_id, coverage_id, effective_date, base_rate, age_factor_young, age_factor_senior, vehicle_power_factor, bonus_malus_step) VALUES
+    (2, 2, '2026-01-01', 320.00, 1.55, 1.10, 1.06, 1.00),
+    (2, 3, '2026-01-01', 180.00, 1.20, 1.05, 1.03, 1.00),
+    (2, 4, '2026-01-01',  90.00, 1.30, 1.05, 1.00, 1.00),
+    (3, 2, '2026-01-01', 280.00, 1.45, 1.05, 1.05, 1.00),
+    (3, 3, '2026-01-01', 150.00, 1.15, 1.05, 1.02, 1.00),
+    (3, 4, '2026-01-01',  75.00, 1.25, 1.05, 1.00, 1.00),
+    (4, 2, '2026-01-01', 360.00, 1.70, 1.15, 1.07, 1.00),
+    (4, 3, '2026-01-01', 210.00, 1.25, 1.10, 1.04, 1.00),
+    (4, 4, '2026-01-01', 105.00, 1.35, 1.10, 1.00, 1.00);
+
 INSERT INTO policyholder (first_name, last_name, date_of_birth, license_number, license_issue_date, email, phone, region_id, risk_tier) VALUES
     ('Jordan', 'Reyes', '1990-04-12', 'D1234567', '2009-05-01', 'jordan.reyes@example.com', '555-0101', 2, 'Low'),
     ('Casey', 'Nguyen', '2002-11-03', 'D7654321', '2020-11-20', 'casey.nguyen@example.com', '555-0102', 3, 'Medium'),

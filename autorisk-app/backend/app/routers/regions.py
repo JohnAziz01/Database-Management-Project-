@@ -3,9 +3,11 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from .. import models, schemas
+from ..auth import get_current_account
 from ..database import get_db
 
-router = APIRouter(prefix="/api/regions", tags=["regions"])
+# BUG-001: login required
+router = APIRouter(prefix="/api/regions", tags=["regions"], dependencies=[Depends(get_current_account)])
 
 
 @router.get("", response_model=List[schemas.RegionOut])

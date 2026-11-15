@@ -1,17 +1,3 @@
-/**
- * LESSON: controlled inputs, useState, forms, and events.
- *
- * In plain HTML/JS (the old login.html), the <input> owns its own value
- * and you reach into the DOM with document.getElementById(...).value when
- * you need it. In React, we usually flip that: STATE owns the value, and
- * the <input> just reflects whatever state currently holds. That's a
- * "controlled input" — value={email} + onChange={...} together mean
- * "this input's value is always exactly what `email` says it is".
- *
- * Why bother? Because now `email` is just a normal JS variable you can
- * validate, transform, or send to an API — no DOM queries required, and
- * React automatically re-renders anything that depends on it.
- */
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";

@@ -8,9 +8,19 @@ numbers) and reuse (the /quote endpoint calls it, and later you could call
 it again from a nightly re-rating job, a CLI script, etc.).
 
 The formula mirrors the "Pricing Factors" panel in quote.html:
-  base_rate * age_factor * vehicle_power_factor * region_factor * bonus_malus
+  base_rate * age_factor * experience_factor * vehicle_power_factor
+            * region_factor * bonus_malus
+
+Changes after testing (see testing/docs/BUG_REPORTS.md):
+  BUG-010  impossible inputs raise ValueError instead of giving a negative price
+  BUG-011  driving experience (years since license_issue_date) now affects price
 """
 from datetime import date
+
+from . import clock
+
+# Surcharge for inexperienced drivers, by full years holding a license.
+EXPERIENCE_FACTORS = [(2, 1.20), (5, 1.10)]  # < 2 years: +20 %, < 5 years: +10 %
 
 
 def _age(born: date, as_of: date) -> int:
@@ -35,7 +45,19 @@ def calculate_quote(
     bonus_malus_step: float,
     as_of: date | None = None,
 ) -> dict:
-    as_of = as_of or date.today()
+    as_of = as_of or clock.today()
+
+    # BUG-010: refuse inputs that can't describe a real driver or car, so a
+    # caller can never get a negative or zero premium out of this function.
+    if bonus_malus_coefficient <= 0:
+        raise ValueError("bonus_malus_coefficient must be greater than 0")
+    if vehicle_power_kw <= 0:
+        raise ValueError("vehicle_power_kw must be greater than 0")
+    if date_of_birth > as_of:
+        raise ValueError("date_of_birth cannot be in the future")
+    if license_issue_date > as_of:
+        raise ValueError("license_issue_date cannot be in the future")
+
     age = _age(date_of_birth, as_of)
 
     # Age factor: young/inexperienced and senior drivers carry a surcharge.
@@ -46,6 +68,14 @@ def calculate_quote(
     else:
         age_factor = 1.00
 
+    # Experience factor (BUG-011): new drivers carry a surcharge.
+    years_licensed = _age(license_issue_date, as_of)
+    experience_factor = 1.00
+    for max_years, factor in EXPERIENCE_FACTORS:
+        if years_licensed < max_years:
+            experience_factor = factor
+            break
+
     # Vehicle power factor scales with engine power in 50kW bands.
     power_bands = max(vehicle_power_kw - 50, 0) // 50
     vehicle_power_factor = round(vehicle_power_factor_table ** (1 + power_bands), 4)
@@ -54,7 +84,8 @@ def calculate_quote(
     bonus_malus_adjustment = bonus_malus_coefficient * bonus_malus_step
 
     estimated_premium = round(
-        base_rate * age_factor * vehicle_power_factor * region_factor * bonus_malus_adjustment,
+        base_rate * age_factor * experience_factor * vehicle_power_factor
+        * region_factor * bonus_malus_adjustment,
         2,
     )
 
@@ -79,6 +110,7 @@ def calculate_quote(
         "pure_premium": pure_premium,
         "base_rate": base_rate,
         "age_factor": age_factor,
+        "experience_factor": experience_factor,
         "vehicle_power_factor": vehicle_power_factor,
         "region_factor": region_factor,
         "bonus_malus_adjustment": bonus_malus_adjustment,

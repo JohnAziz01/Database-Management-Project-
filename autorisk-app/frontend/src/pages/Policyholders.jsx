@@ -1,14 +1,3 @@
-/**
- * LESSON: this page ties everything together — controlled search inputs,
- * useEffect re-running when a *dependency* changes (not just on mount),
- * "debouncing" so we don't hit the API on every keystroke, and a simple
- * modal form that POSTs a new row and refreshes the list.
- *
- * This is the fullest example of the pattern you'll repeat for every
- * other list page (Vehicles, Policies, Claims, Coverage, ...): fetch,
- * show loading/empty/error states, render rows, and optionally add new
- * ones.
- */
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 
@@ -60,9 +49,13 @@ export default function Policyholders() {
 
   async function handleCreated() {
     setShowAddForm(false);
-    // Re-run the same fetch by nudging a dependency — simplest is to just
-    // re-request directly:
-    const data = await api.getPolicyholders(search ? { q: search } : {});
+    // Re-request the list with the SAME filters the user has on screen.
+    // (BUG-019: this used to pass only the search text, so the region
+    // filter was silently dropped while the dropdown still showed it.)
+    const params = {};
+    if (search) params.q = search;
+    if (regionId) params.region_id = regionId;
+    const data = await api.getPolicyholders(params);
     setPolicyholders(data);
   }
 
@@ -207,8 +200,9 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
           <div className="modal-body">
             <div className="form-grid">
               <div className="form-group">
-                <label>First Name</label>
+                <label htmlFor="ph-first-name">First Name</label>
                 <input
+                  id="ph-first-name"
                   className="form-control"
                   value={form.first_name}
                   onChange={(e) => update("first_name", e.target.value)}
@@ -216,8 +210,9 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
                 />
               </div>
               <div className="form-group">
-                <label>Last Name</label>
+                <label htmlFor="ph-last-name">Last Name</label>
                 <input
+                  id="ph-last-name"
                   className="form-control"
                   value={form.last_name}
                   onChange={(e) => update("last_name", e.target.value)}
@@ -225,8 +220,9 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
                 />
               </div>
               <div className="form-group">
-                <label>Date of Birth</label>
+                <label htmlFor="ph-dob">Date of Birth</label>
                 <input
+                  id="ph-dob"
                   className="form-control"
                   type="date"
                   value={form.date_of_birth}
@@ -235,8 +231,9 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
                 />
               </div>
               <div className="form-group">
-                <label>License Number</label>
+                <label htmlFor="ph-license-number">License Number</label>
                 <input
+                  id="ph-license-number"
                   className="form-control"
                   value={form.license_number}
                   onChange={(e) => update("license_number", e.target.value)}
@@ -244,8 +241,9 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
                 />
               </div>
               <div className="form-group">
-                <label>License Issue Date</label>
+                <label htmlFor="ph-license-date">License Issue Date</label>
                 <input
+                  id="ph-license-date"
                   className="form-control"
                   type="date"
                   value={form.license_issue_date}
@@ -254,8 +252,9 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
                 />
               </div>
               <div className="form-group">
-                <label>Email</label>
+                <label htmlFor="ph-email">Email</label>
                 <input
+                  id="ph-email"
                   className="form-control"
                   type="email"
                   value={form.email}
@@ -264,16 +263,18 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
                 />
               </div>
               <div className="form-group">
-                <label>Phone</label>
+                <label htmlFor="ph-phone">Phone</label>
                 <input
+                  id="ph-phone"
                   className="form-control"
                   value={form.phone}
                   onChange={(e) => update("phone", e.target.value)}
                 />
               </div>
               <div className="form-group">
-                <label>Region</label>
+                <label htmlFor="ph-region">Region</label>
                 <select
+                  id="ph-region"
                   className="form-control"
                   value={form.region_id}
                   onChange={(e) => update("region_id", e.target.value)}
@@ -287,8 +288,9 @@ function AddPolicyholderModal({ regions, onClose, onCreated }) {
                 </select>
               </div>
               <div className="form-group">
-                <label>Risk Tier</label>
+                <label htmlFor="ph-risk-tier">Risk Tier</label>
                 <select
+                  id="ph-risk-tier"
                   className="form-control"
                   value={form.risk_tier}
                   onChange={(e) => update("risk_tier", e.target.value)}

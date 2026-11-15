@@ -1,0 +1,25 @@
+# Throwaway PostgreSQL used ONLY by the automated tests.
+#
+#   docker compose -f testing/docker-compose.test.yml up -d     # start
+#   docker compose -f testing/docker-compose.test.yml down      # stop + delete
+#
+# It listens on port 5544 so it never clashes with a real local
+# Postgres, and the tests wipe and re-seed it before every test. Never point
+# the tests at the real (Neon) database in backend/.env.
+services:
+  autorisk-test-db:
+    image: postgres:16-alpine
+    container_name: autorisk-test-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: autorisk_test
+    ports:
+      - "5544:5432"
+    tmpfs:
+      - /var/lib/postgresql/data   # data lives in RAM: fast, and gone on stop
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d autorisk_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
