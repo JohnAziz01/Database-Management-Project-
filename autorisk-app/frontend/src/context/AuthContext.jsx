@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import { api } from "../api/client";
 
 const AuthContext = createContext(null);
@@ -20,12 +20,27 @@ export function AuthProvider({ children }) {
       accountId: result.account_id,
       email: result.email,
       accountType: result.account_type,
+      adminRole: result.admin_role ?? null,
     };
     localStorage.setItem("autorisk_user", JSON.stringify(loggedInUser));
     setUser(loggedInUser); // <-- this triggers a re-render of everything
     // that reads `user` from context, e.g. the sidebar and route guards.
     return loggedInUser;
   }, []);
+
+  // Sessions saved before staff roles existed have no adminRole: fetch it once.
+  useEffect(() => {
+    if (user && user.adminRole === undefined) {
+      api
+        .me()
+        .then((me) => {
+          const updated = { ...user, adminRole: me.admin_role ?? null };
+          localStorage.setItem("autorisk_user", JSON.stringify(updated));
+          setUser(updated);
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const logout = useCallback(() => {
     localStorage.removeItem("autorisk_token");
@@ -34,7 +49,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   // The `value` object is what every consumer of useAuth() receives.
-  const value = { user, login, logout, isAuthenticated: !!user };
+  // Administrators and Managers may change rates and accounts; Analysts only view.
+  const canManage = user?.accountType === "Admin" && ["Administrator", "Manager"].includes(user?.adminRole);
+  const value = { user, login, logout, isAuthenticated: !!user, canManage };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

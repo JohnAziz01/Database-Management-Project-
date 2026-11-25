@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import StatusPill from "../components/StatusPill";
+import { formatId } from "../utils/formatId";
 
 export default function Claims() {
   const [claims, setClaims] = useState([]);
@@ -32,8 +33,8 @@ export default function Claims() {
             ) : (
               claims.map((c) => (
                 <tr key={c.claim_id}>
-                  <td className="cell-strong">CLM-{String(c.claim_id).padStart(4, "0")}</td>
-                  <td>POL-{String(c.policy_id).padStart(4, "0")}</td>
+                  <td className="cell-strong">{formatId("CLM", c.claim_id)}</td>
+                  <td>{formatId("POL", c.policy_id)}</td>
                   <td>{c.claim_date}</td>
                   <td>{c.claim_type}</td>
                   <td><StatusPill value={c.status} /></td>

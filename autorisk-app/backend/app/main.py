@@ -9,7 +9,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
-from .routers import auth, regions, coverages, policyholders, vehicles, policies, claims, dashboard, quote
+from .routers import (
+    accounts, auth, claims, coverages, dashboard, policies, policyholders, quote, rate_tables, regions,
+    reports, risk, vehicles,
+)
 
 load_dotenv()
 
@@ -37,6 +40,10 @@ app.include_router(policies.router)
 app.include_router(claims.router)
 app.include_router(dashboard.router)
 app.include_router(quote.router)
+app.include_router(rate_tables.router)
+app.include_router(risk.router)
+app.include_router(reports.router)
+app.include_router(accounts.router)
 
 
 @app.get("/api/health")

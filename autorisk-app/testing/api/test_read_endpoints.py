@@ -91,6 +91,41 @@ def test_pending_payments_not_counted_as_paid(client):
     assert client.get("/api/dashboard/summary").json()["total_claims_paid"] == 2400.00
 
 
+# ------------------------------------------------- dashboard: whole portfolio
+def test_portfolio_totals_include_expired_policies(client):
+    t = client.get("/api/dashboard/portfolio").json()["totals"]
+    assert t["policies"] == 3                 # incl. expired policy 3
+    assert t["premium"] == 2205.75            # 610.50 + 705.00 + 890.25
+    assert t["claims"] == 2
+    assert t["paid"] == 2400.00
+    assert t["loss_ratio"] == round(2400 / 2205.75, 4)
+    assert t["average_claim"] == 1200.00      # 2400 paid / 2 claims
+
+
+def test_portfolio_by_year_and_region(client):
+    body = client.get("/api/dashboard/portfolio").json()
+    years = {r["year"]: r for r in body["by_year"]}
+    assert years[2025]["policies"] == 1 and years[2025]["paid"] == 0
+    assert years[2026]["policies"] == 2 and years[2026]["paid"] == 2400.00
+    assert body["by_region"][0]["region"] == "Region A"   # most paid first
+    assert sum(r["policies"] for r in body["by_region"]) == 3
+
+
+def test_portfolio_premium_not_double_counted_by_multiple_payments(client):
+    # a second payment on claim 1 must add to "paid" but not repeat policy 1's premium
+    run_sql(
+        "INSERT INTO claim_payment (claim_id, payment_seq, payment_date, amount, payment_method, status) "
+        "VALUES (1, 2, '2026-06-10', 100.00, 'Cheque', 'Paid')"
+    )
+    t = client.get("/api/dashboard/portfolio").json()["totals"]
+    assert t["premium"] == 2205.75
+    assert t["paid"] == 2500.00
+
+
+def test_portfolio_is_admin_only(anon_client, customer_headers):
+    assert anon_client.get("/api/dashboard/portfolio", headers=customer_headers).status_code == 403
+
+
 # Regression test for BUG-022 (fixed): negative ?limit= crashes recent-claims with 500 instead of 422
 def test_negative_limit_is_422(client):
     assert client.get("/api/dashboard/recent-claims", params={"limit": -1}).status_code == 422

@@ -22,6 +22,10 @@ testing/.env.test
 testing/reports/
 .pytest_cache/
 
-# Teaching material (kept on disk, not in the repo)
-/README.md
-testing/docs/LEARNING_GUIDE.md
+# Local AI-agent tooling (not part of the project)
+.claude/
+skills-lock.json
+
+# Full data export is large; download it from the autorisk-data-handoff branch
+data-handoff/AutoRisk-data.zip
+data-handoff/full/

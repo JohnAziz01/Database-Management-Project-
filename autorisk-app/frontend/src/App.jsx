@@ -11,7 +11,10 @@ import Vehicles from "./pages/Vehicles";
 import Claims from "./pages/Claims";
 import Coverage from "./pages/Coverage";
 import Regions from "./pages/Regions";
-import ComingSoon from "./pages/ComingSoon";
+import RateTables from "./pages/RateTables";
+import RiskAnalysis from "./pages/RiskAnalysis";
+import Reports from "./pages/Reports";
+import Accounts from "./pages/Accounts";
 
 export default function App() {
   return (
@@ -47,16 +50,16 @@ export default function App() {
           <Route path="/regions" element={<Regions />} />
         </Route>
         <Route element={<Layout title="Pricing / Rate Tables" breadcrumbs={["Pricing", "Rate Tables"]} />}>
-          <Route path="/rate-tables" element={<ComingSoon title="Rate Tables" />} />
+          <Route path="/rate-tables" element={<RateTables />} />
         </Route>
         <Route element={<Layout title="Risk Analysis" breadcrumbs={["Risk Analysis"]} />}>
-          <Route path="/risk-analysis" element={<ComingSoon title="Risk Analysis" />} />
+          <Route path="/risk-analysis" element={<RiskAnalysis />} />
         </Route>
         <Route element={<Layout title="Reports" breadcrumbs={["Reports"]} />}>
-          <Route path="/reports" element={<ComingSoon title="Reports" />} />
+          <Route path="/reports" element={<Reports />} />
         </Route>
         <Route element={<Layout title="Accounts / Security" breadcrumbs={["Accounts"]} />}>
-          <Route path="/users" element={<ComingSoon title="Accounts" />} />
+          <Route path="/users" element={<Accounts />} />
         </Route>
       </Route>
 

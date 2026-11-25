@@ -33,6 +33,7 @@ def login(payload: schemas.LoginRequest, db: Session = Depends(get_db)):
         account_id=account.account_id,
         email=account.email,
         account_type=account.account_type,
+        admin_role=account.admin_role,
     )
 
 
@@ -42,4 +43,5 @@ def me(current=Depends(auth.get_current_account)):
         "account_id": current.account_id,
         "email": current.email,
         "account_type": current.account_type,
+        "admin_role": current.admin_role,
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { formatId } from "../utils/formatId";
 
 export default function Vehicles() {
   const [vehicles, setVehicles] = useState([]);
@@ -33,8 +34,8 @@ export default function Vehicles() {
             ) : (
               vehicles.map((v) => (
                 <tr key={v.vehicle_id}>
-                  <td className="cell-strong">VEH-{String(v.vehicle_id).padStart(4, "0")}</td>
-                  <td>PH-{String(v.policyholder_id).padStart(4, "0")}</td>
+                  <td className="cell-strong">{formatId("VEH", v.vehicle_id)}</td>
+                  <td>{formatId("PH", v.policyholder_id)}</td>
                   <td>{v.make}</td>
                   <td>{v.model}</td>
                   <td>{v.manufacture_year}</td>

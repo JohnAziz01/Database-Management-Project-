@@ -99,8 +99,9 @@ h1, h2, h3, h4 { margin: 0; }
 /* ---------- KPI cards ---------- */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
 .kpi-5 { grid-template-columns: repeat(5, 1fr); }
+.kpi-6 { grid-template-columns: repeat(6, 1fr); }
 @media (max-width: 1100px) {
-  .kpi-grid, .kpi-5 { grid-template-columns: repeat(2, 1fr); }
+  .kpi-grid, .kpi-5, .kpi-6 { grid-template-columns: repeat(2, 1fr); }
 }
 .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
 .kpi-label { font-size: 12px; color: var(--text-400); margin-bottom: 6px; }
@@ -215,3 +216,97 @@ h1, h2, h3, h4 { margin: 0; }
 @media (max-width: 860px) {
   .login-aside { display: none; }
 }
+
+
+/* ---------- Dashboard: portfolio panels ---------- */
+.section-heading { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.section-heading h2 { font-size: 17px; margin: 0; }
+.muted { color: var(--text-400); }
+.data-table th.num, .data-table td.num { text-align: right; }
+.region-scroll { max-height: 340px; overflow-y: auto; }
+.grid-charts > * { min-width: 0; }  /* let wide tables scroll inside their card */
+.data-table.compact th, .data-table.compact td { padding: 9px 10px; }
+
+/* single-series column chart: thin columns, 4px rounded tops, shared baseline */
+.year-chart { display: flex; flex-direction: column; gap: 6px; }
+.year-plot {
+  height: 220px; display: flex; align-items: flex-end; gap: 2px;
+  border-bottom: 1px solid var(--border);
+  background-image: linear-gradient(var(--border) 1px, transparent 1px);
+  background-size: 100% 25%; background-position: 0 -1px;
+}
+.year-col {
+  flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end;
+  align-items: center; cursor: default; outline: none;
+}
+.year-col:focus-visible .year-bar { outline: 2px solid var(--primary-dark); outline-offset: 2px; }
+.year-value { font-size: 11px; color: var(--text-500); min-height: 16px; font-variant-numeric: tabular-nums; }
+.year-bar {
+  width: 100%; max-width: 36px; background: var(--primary);
+  border-radius: 4px 4px 0 0; transition: opacity 0.12s;
+}
+.year-bar.dim { opacity: 0.35; }
+.year-axis { display: flex; gap: 2px; }
+.year-label { flex: 1; text-align: center; font-size: 11px; color: var(--text-400); }
+.year-tooltip { font-size: 12px; color: var(--text-500); min-height: 18px; margin-top: 6px; }
+
+/* magnitude bar inside a table cell */
+.inline-bar { display: flex; align-items: center; gap: 8px; }
+.inline-bar-track { width: 56px; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; flex: none; }
+.inline-bar-fill { display: block; height: 100%; background: var(--primary); border-radius: 0 4px 4px 0; }
+
+/* ---------- Rate tables / risk / reports / accounts ---------- */
+.pill-current, .pill-enabled { background: #e5f6ec; color: var(--success); }
+.pill-scheduled { background: #e6edfc; color: var(--primary); }
+.pill-disabled { background: #eef0f4; color: var(--text-500); }
+
+.form-success {
+  background: #e5f6ec; color: var(--success); border-radius: 8px;
+  padding: 9px 12px; font-size: 13px; margin: 10px 0;
+}
+.card > .form-error, .card > .form-success { margin: 12px 18px; }
+.form-note { font-size: 12.5px; color: var(--text-500); margin: 0 0 14px; }
+.modal-sm { max-width: 420px; }
+
+.tag {
+  display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+  font-size: 10.5px; font-weight: 600; background: var(--bg); color: var(--text-500);
+  border: 1px solid var(--border); vertical-align: 1px;
+}
+.row-muted td { color: var(--text-400); }
+.row-muted .inline-bar-fill { opacity: 0.45; }
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.inline-bar-fill.warn { background: var(--danger); }
+
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-500);
+  border-radius: 999px; padding: 7px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.tab:hover { color: var(--text-900); }
+.tab-active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.tab-active:hover { color: #fff; }
+.tab:focus-visible { outline: 2px solid var(--primary-dark); outline-offset: 2px; }
+
+.insight {
+  margin: 14px 18px 4px; padding: 10px 14px; border-radius: 8px;
+  background: #fdf1de; color: var(--text-900); font-size: 13px;
+}
+.card-foot { padding: 12px 18px; font-size: 12px; border-top: 1px solid var(--border); }
+
+.reports-layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .reports-layout { grid-template-columns: 1fr; } }
+.report-list { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.report-item {
+  text-align: left; background: none; border: 1px solid transparent; border-radius: 8px;
+  padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; font: inherit;
+}
+.report-item:hover { background: var(--bg); }
+.report-item.active { background: #e6edfc; border-color: #c7d6fb; }
+.report-item:focus-visible { outline: 2px solid var(--primary); }
+.report-title { font-weight: 700; font-size: 13.5px; color: var(--text-900); }
+.report-desc { font-size: 12px; color: var(--text-500); line-height: 1.35; }
+.report-scroll { max-height: 520px; overflow: auto; }
+.inline-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-500); }
+.inline-field .field-sm { min-width: 0; }
+.form-grid + .form-note { margin-top: 14px; }

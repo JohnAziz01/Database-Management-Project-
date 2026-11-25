@@ -66,6 +66,7 @@ export const api = {
 
   getDashboardSummary: () => request("/dashboard/summary"),
   getRecentClaims: () => request("/dashboard/recent-claims"),
+  getPortfolio: () => request("/dashboard/portfolio"),
 
   getPolicyholders: (params = {}) => {
     const qs = new URLSearchParams(params).toString();
@@ -85,4 +86,51 @@ export const api = {
 
   getQuoteOptions: () => request("/quote/options"),
   getQuote: (payload) => request("/quote", { method: "POST", body: JSON.stringify(payload) }),
+
+  getRateTables: (params = {}) => request(`/rate-tables${qs(params)}`),
+  publishRateVersion: (data) => request("/rate-tables", { method: "POST", body: JSON.stringify(data) }),
+
+  getRiskDimensions: () => request("/risk/dimensions"),
+  getRiskAnalysis: (dimension) => request(`/risk/analysis${qs({ dimension })}`),
+
+  getReports: () => request("/reports"),
+  getReport: (key, params = {}) => request(`/reports/${key}${qs(params)}`),
+  downloadReport: (key, params = {}) => download(`/reports/${key}/csv${qs(params)}`),
+
+  getAccounts: () => request("/accounts"),
+  createAccount: (data) => request("/accounts", { method: "POST", body: JSON.stringify(data) }),
+  updateAccount: (id, data) => request(`/accounts/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  resetPassword: (id, newPassword) =>
+    request(`/accounts/${id}/reset-password`, { method: "POST", body: JSON.stringify({ new_password: newPassword }) }),
 };
+
+// Build "?a=1&b=2" from an object, skipping empty values.
+function qs(params) {
+  const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== "" && v != null));
+  const s = new URLSearchParams(clean).toString();
+  return s ? `?${s}` : "";
+}
+
+// File downloads need the Bearer token too, so a plain <a href> won't do:
+// fetch the file, then hand the browser a temporary blob URL to save.
+async function download(path) {
+  const res = await fetch(`${BASE_URL}${path}`, { headers: authHeaders() });
+  if (!res.ok) {
+    let detail = res.statusText;
+    try {
+      detail = formatDetail((await res.json()).detail) || detail;
+    } catch {
+      /* not JSON */
+    }
+    throw new Error(detail);
+  }
+  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") || "")?.[1] || "report.csv";
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
 import StatusPill from "../components/StatusPill";
+import { formatId } from "../utils/formatId";
 
 export default function Policies() {
   const [policies, setPolicies] = useState([]);
@@ -53,9 +54,9 @@ export default function Policies() {
             ) : (
               policies.map((p) => (
                 <tr key={p.policy_id}>
-                  <td className="cell-strong">POL-{String(p.policy_id).padStart(4, "0")}</td>
-                  <td>PH-{String(p.policyholder_id).padStart(4, "0")}</td>
-                  <td>VEH-{String(p.vehicle_id).padStart(4, "0")}</td>
+                  <td className="cell-strong">{formatId("POL", p.policy_id)}</td>
+                  <td>{formatId("PH", p.policyholder_id)}</td>
+                  <td>{formatId("VEH", p.vehicle_id)}</td>
                   <td>{p.start_date}</td>
                   <td>{p.end_date}</td>
                   <td><StatusPill value={p.status} /></td>

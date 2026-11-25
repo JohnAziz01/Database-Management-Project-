@@ -2,7 +2,9 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import KpiCard from "../components/KpiCard";
+import PortfolioPanels from "../components/PortfolioPanels";
 import StatusPill from "../components/StatusPill";
+import { formatId } from "../utils/formatId";
 
 export default function Dashboard() {
   // Three independent pieces of state: the data itself, whether we're
@@ -10,6 +12,7 @@ export default function Dashboard() {
   // one big object) keeps each update simple.
   const [summary, setSummary] = useState(null);
   const [recentClaims, setRecentClaims] = useState([]);
+  const [portfolio, setPortfolio] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,13 +23,15 @@ export default function Dashboard() {
       try {
         // Promise.all runs both requests in parallel instead of one after
         // another — the dashboard has two independent pieces of data.
-        const [summaryData, claimsData] = await Promise.all([
+        const [summaryData, claimsData, portfolioData] = await Promise.all([
           api.getDashboardSummary(),
           api.getRecentClaims(),
+          api.getPortfolio(),
         ]);
         if (!cancelled) {
           setSummary(summaryData);
           setRecentClaims(claimsData);
+          setPortfolio(portfolioData);
         }
       } catch (err) {
         if (!cancelled) setError(err.message);
@@ -98,8 +103,8 @@ export default function Dashboard() {
               ) : (
                 recentClaims.map((c) => (
                   <tr key={c.claim_id}>
-                    <td className="cell-strong">CLM-{String(c.claim_id).padStart(4, "0")}</td>
-                    <td>POL-{String(c.policy_id).padStart(4, "0")}</td>
+                    <td className="cell-strong">{formatId("CLM", c.claim_id)}</td>
+                    <td>{formatId("POL", c.policy_id)}</td>
                     <td>{c.claim_date}</td>
                     <td>
                       <StatusPill value={c.status} />
@@ -112,6 +117,7 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+      {portfolio && <PortfolioPanels data={portfolio} />}
     </div>
   );
 }

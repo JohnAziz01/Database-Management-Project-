@@ -37,18 +37,18 @@ def test_empty_state_before_calculating(quote_page):
 
 def test_calculates_premium(quote_page):
     fill_quote(quote_page)
-    # same hand-calculated value as the unit and API tests: 491.16
-    expect(quote_page.locator(".result-value")).to_have_text("$491.16 / year")
+    # same hand-calculated value as the unit and API tests: 245.58 (6-month term)
+    expect(quote_page.locator(".result-value")).to_have_text("$245.58 / 6 months")
     expect(quote_page.locator(".metric-row", has_text="Risk Level")).to_contain_text("Low")
 
 
 def test_region_changes_the_price(quote_page):
     fill_quote(quote_page, region="Region B")
     # Region B has its OWN power factor (1.04, not Region A's 1.05):
-    # 380 * 1.04^2 * 0.95 * 0.90 = 351.41
+    # 380 * 1.04^2 * 0.95 * 0.90 = 351.41 / year, x 6/12 for the term = 175.71
     # (The first draft of this test assumed 1.05 and expected 358.19 -- the
     # app was right and the test's "oracle" was wrong.)
-    expect(quote_page.locator(".result-value")).to_have_text("$351.41 / year")
+    expect(quote_page.locator(".result-value")).to_have_text("$175.71 / 6 months")
 
 
 def test_out_of_range_bonus_malus_blocked_by_browser(quote_page):
@@ -59,8 +59,8 @@ def test_out_of_range_bonus_malus_blocked_by_browser(quote_page):
 # Regression test for BUG-009 (fixed): choosing Collision (the first coverage listed) always fails
 def test_collision_coverage_can_be_quoted(quote_page):
     fill_quote(quote_page, coverage="Collision")
-    # 320 * 1.06^2 (138 kW) * 1.10 * 0.90 = 355.96
-    expect(quote_page.locator(".result-value")).to_have_text("$355.96 / year")
+    # 320 * 1.06^2 (138 kW) * 1.10 * 0.90 = 355.96 / year, x 6/12 = 177.98
+    expect(quote_page.locator(".result-value")).to_have_text("$177.98 / 6 months")
 
 
 def test_coverage_list_follows_the_chosen_region(quote_page):
@@ -68,4 +68,4 @@ def test_coverage_list_follows_the_chosen_region(quote_page):
     expect(coverage).to_be_disabled()           # until a region is chosen
     field(quote_page, "Region").select_option(label="Region B")
     expect(coverage).to_be_enabled()
-    expect(coverage.locator("option")).to_have_count(5)  # "Select..." + 4 coverages
+    expect(coverage.locator("option")).to_have_count(6)  # "Select..." + 4 coverages + Full Coverage

@@ -12,7 +12,7 @@ also checked HERE, so bad input gets a clear 422 instead of crashing the
 server with a 500 when Postgres rejects it.
 """
 from datetime import date, datetime
-from typing import Annotated, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints, field_validator, model_validator
 
@@ -179,6 +179,7 @@ class LoginResponse(BaseModel):
     account_id: int
     email: str
     account_type: str
+    admin_role: Optional[str] = None
 
 
 # ---------- Quote (pricing calculator) ----------
@@ -191,7 +192,9 @@ class QuoteRequest(BaseModel):
     vehicle_manufacture_year: int = Field(ge=1900)
     vehicle_power_kw: int = Field(ge=1, le=1000)
     region_id: int
-    coverage_id: int
+    # Either one coverage_id, or full_coverage=true to bundle every coverage.
+    coverage_id: Optional[int] = None
+    full_coverage: bool = False
 
     @field_validator("date_of_birth")
     @classmethod
@@ -216,24 +219,145 @@ class QuoteRequest(BaseModel):
             raise ValueError("License issue date must be after the date of birth")
         return self
 
+    @model_validator(mode="after")
+    def coverage_chosen(self):
+        if not self.full_coverage and self.coverage_id is None:
+            raise ValueError("Choose a coverage or select Full Coverage")
+        return self
+
+
+class CoverageLine(BaseModel):
+    """One coverage's share of a Full Coverage quote."""
+    coverage_id: int
+    coverage_name: str
+    base_rate: float
+    age_factor: float
+    vehicle_power_factor: float
+    estimated_premium: float
+
 
 class QuoteResponse(BaseModel):
-    estimated_premium: float
+    estimated_premium: float          # for one policy term (see term_months)
+    term_months: int = 6
     risk_level: str
     estimated_claim_frequency: float
     estimated_claim_severity: float
     pure_premium: float
     base_rate: float
-    age_factor: float
+    # None for Full Coverage: these differ per coverage (see coverage_breakdown)
+    age_factor: Optional[float] = None
     experience_factor: float
-    vehicle_power_factor: float
+    vehicle_power_factor: Optional[float] = None
     region_factor: float
     bonus_malus_adjustment: float
+    # Full Coverage only
+    full_coverage: bool = False
+    subtotal_premium: Optional[float] = None
+    discount_rate: Optional[float] = None
+    discount_amount: Optional[float] = None
+    coverage_breakdown: Optional[List[CoverageLine]] = None
 
 
 class QuoteOption(BaseModel):
-    """A region + coverage pair that has a current rate table (BUG-009)."""
+    """A region + coverage pair that has a current rate table (BUG-009).
+
+    Regions where every coverage is priced also get a Full Coverage entry
+    (coverage_id None, full_coverage True).
+    """
+    region_id: int
+    region_name: str
+    coverage_id: Optional[int] = None
+    coverage_name: str
+    full_coverage: bool = False
+
+
+# ---------- Rate tables (admin) ----------
+class RateTableOut(BaseModel):
+    rate_table_id: int
     region_id: int
     region_name: str
     coverage_id: int
     coverage_name: str
+    effective_date: date
+    expiry_date: Optional[date] = None
+    base_rate: float
+    age_factor_young: float
+    age_factor_senior: float
+    vehicle_power_factor: float
+    bonus_malus_step: float
+    status: Literal["Current", "Scheduled", "Expired"]
+
+
+class RateTableCreate(BaseModel):
+    """A new rate VERSION. Existing rows are never edited: the version in
+    force is closed (expiry_date = new effective_date) and this one starts."""
+    region_id: int
+    coverage_id: int
+    effective_date: date
+    base_rate: float = Field(gt=0, le=100000)
+    age_factor_young: float = Field(1.0, ge=0.5, le=5)
+    age_factor_senior: float = Field(1.0, ge=0.5, le=5)
+    vehicle_power_factor: float = Field(1.0, ge=0.5, le=3)
+    bonus_malus_step: float = Field(1.0, ge=0.5, le=3)
+
+    @field_validator("effective_date")
+    @classmethod
+    def not_in_past(cls, v: date) -> date:
+        # Backdating would re-price quotes already given for those days.
+        if v < clock.today():
+            raise ValueError("Effective date cannot be in the past")
+        return v
+
+
+# ---------- Accounts (admin) ----------
+AdminRole = Literal["Analyst", "Administrator", "Manager"]
+Password = Annotated[str, StringConstraints(min_length=8, max_length=128)]
+
+
+class AccountOut(BaseModel):
+    account_id: int
+    email: str
+    account_type: str
+    admin_role: Optional[str] = None
+    policyholder_id: Optional[int] = None
+    policyholder_name: Optional[str] = None
+    is_active: bool
+    created_at: Optional[datetime] = None
+    last_login_at: Optional[datetime] = None
+
+
+class AccountCreate(BaseModel):
+    email: Annotated[EmailStr, Field(max_length=100)]
+    password: Password
+    account_type: Literal["Customer", "Admin"]
+    admin_role: Optional[AdminRole] = None
+    policyholder_id: Optional[int] = None
+
+    @field_validator("email")
+    @classmethod
+    def lowercase_email(cls, v: str) -> str:
+        return v.lower()
+
+    @model_validator(mode="after")
+    def matches_db_checks(self):
+        # Same rules as chk_customer_has_policyholder / chk_admin_has_role
+        if self.account_type == "Customer":
+            if self.policyholder_id is None:
+                raise ValueError("A customer account must be linked to a policyholder")
+            if self.admin_role is not None:
+                raise ValueError("A customer account cannot have a staff role")
+        else:
+            if self.admin_role is None:
+                raise ValueError("A staff account needs a role")
+            if self.policyholder_id is not None:
+                raise ValueError("A staff account cannot be linked to a policyholder")
+        return self
+
+
+class AccountUpdate(BaseModel):
+    is_active: Optional[bool] = None
+    admin_role: Optional[AdminRole] = None
+
+
+class PasswordReset(BaseModel):
+    new_password: Password

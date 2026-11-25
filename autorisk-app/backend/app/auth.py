@@ -138,3 +138,22 @@ def require_admin(account: models.Account = Depends(get_current_account)) -> mod
 def customer_scope(account: models.Account = Depends(get_current_account)) -> Optional[int]:
     """None for admins (no restriction); the customer's own policyholder_id otherwise."""
     return None if account.account_type == "Admin" else account.policyholder_id
+
+
+# ---------------------------------------------------------------------------
+# Staff roles (account.admin_role)
+#   Analyst       -> read-only: can view rates, risk analysis, reports, accounts
+#   Administrator -> can also change rate tables and manage accounts
+#   Manager       -> same as Administrator
+# ---------------------------------------------------------------------------
+MANAGE_ROLES = ("Administrator", "Manager")
+
+
+def require_manager(account: models.Account = Depends(require_admin)) -> models.Account:
+    """Admin with a role allowed to change data (not a read-only Analyst)."""
+    if account.admin_role not in MANAGE_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator or Manager role required (Analysts are read-only)",
+        )
+    return account

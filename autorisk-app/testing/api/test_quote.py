@@ -43,11 +43,13 @@ def years_ago(n):
 
 
 def test_quote_matches_hand_calculation(client, payload):
-    # 450 * 1.00 (age) * 1.05^2 (138 kW) * 1.10 (Region A) * 0.90 = 491.16
+    # 450 * 1.00 (age) * 1.05^2 (138 kW) * 1.10 (Region A) * 0.90 = 491.16/yr
+    # x 6/12 for the 6-month term = 245.58
     r = client.post(URL, json=payload)
     assert r.status_code == 200
     body = r.json()
-    assert body["estimated_premium"] == 491.16
+    assert body["estimated_premium"] == 245.58
+    assert body["term_months"] == 6
     assert body["base_rate"] == 450.0
     assert body["region_factor"] == 1.10
     assert body["risk_level"] == "Low"
@@ -71,7 +73,7 @@ def test_new_drivers_pay_experience_surcharge(client, payload, licensed_years, f
     payload["license_issue_date"] = years_ago(licensed_years)
     body = client.post(URL, json=payload).json()
     assert body["experience_factor"] == factor
-    assert body["estimated_premium"] == pytest.approx(491.16 * factor, abs=0.02)
+    assert body["estimated_premium"] == pytest.approx(245.58 * factor, abs=0.02)
 
 
 def test_expired_rate_table_is_ignored(client, payload):
@@ -138,10 +140,10 @@ def test_text_in_number_field_is_422(client, payload):
 def test_every_option_offered_in_the_form_can_be_quoted(client, payload):
     # The form now builds its dropdowns from /api/quote/options.
     options = client.get(f"{URL}/options").json()
-    assert len(options) == 12  # 3 regions x 4 coverages
+    assert len(options) == 15  # 3 regions x 4 coverages + 3 Full Coverage bundles
     failures = []
     for o in options:
-        payload.update(region_id=o["region_id"], coverage_id=o["coverage_id"])
+        payload.update(region_id=o["region_id"], coverage_id=o["coverage_id"], full_coverage=o["full_coverage"])
         if client.post(URL, json=payload).status_code != 200:
             failures.append((o["region_name"], o["coverage_name"]))
     assert failures == []
@@ -173,3 +175,35 @@ def test_options_leave_out_expired_rate_tables(client):
 def test_impossible_input_is_422(client, payload, field, value):
     payload[field] = value
     assert client.post(URL, json=payload).status_code == 422
+
+
+# ------------------------------------------------------------- Full Coverage
+def test_full_coverage_is_sum_of_coverages_minus_discount(client, payload):
+    singles = []
+    for coverage_id in (1, 2, 3, 4):
+        payload["coverage_id"] = coverage_id
+        singles.append(client.post(URL, json=payload).json()["estimated_premium"])
+    payload.update(coverage_id=None, full_coverage=True)
+    r = client.post(URL, json=payload)
+    assert r.status_code == 200
+    body = r.json()
+    assert body["full_coverage"] is True
+    assert [c["estimated_premium"] for c in body["coverage_breakdown"]] == singles
+    assert body["subtotal_premium"] == pytest.approx(sum(singles), abs=0.01)
+    assert body["estimated_premium"] == pytest.approx(sum(singles) * 0.90, abs=0.01)
+    assert body["base_rate"] == 450 + 320 + 180 + 90  # Region A rate tables
+
+
+def test_full_coverage_works_without_coverage_id(client, payload):
+    del payload["coverage_id"]
+    payload["full_coverage"] = True
+    assert client.post(URL, json=payload).status_code == 200
+
+
+def test_full_coverage_unavailable_when_a_coverage_has_no_rate(client, payload):
+    run_sql("UPDATE rate_table SET expiry_date = effective_date + 1 WHERE region_id = 2 AND coverage_id = 3")
+    payload["full_coverage"] = True
+    assert client.post(URL, json=payload).status_code == 404
+    options = client.get(f"{URL}/options").json()
+    assert not any(o["full_coverage"] and o["region_id"] == 2 for o in options)
+    assert any(o["full_coverage"] and o["region_id"] == 3 for o in options)

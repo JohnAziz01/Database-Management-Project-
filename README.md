@@ -148,37 +148,58 @@ This workflow ensures that each contract reflects the pricing conditions in effe
 - **Weak claim payments:** `CLAIM_PAYMENT` depends on `CLAIM` and uses the composite key `(claim_id, payment_seq)` to identify each payment or installment.
 - **Exclusive account types:** An `ACCOUNT` represents either a customer or an administrator. Customer accounts reference `POLICYHOLDER`, while administrator accounts use `admin_role`. Mutually exclusive `CHECK` constraints prevent an account from being both.
 - **Policy-specific coverage values:** Limits, deductibles, and premiums belong to `POLICY_COVERAGE` because the same coverage type can have different terms on different policies.
+- **Versioned rates:** a rate is never edited in place. Publishing a new rate version sets the old row's `expiry_date` to the new version's `effective_date`, so the full price history is kept.
+- **Pricing formula:** premium = base rate × age factor × experience factor × vehicle-power factor × region factor × bonus-malus, for a **6-month term** (rate tables hold annual rates, multiplied by 6/12). Bonus-malus is the claims-history multiplier: 1.00 is neutral, below 1.00 is a no-claims discount, above 1.00 a surcharge.
+- **Full Coverage:** all four coverages priced with their own rate tables, summed, then 10% off. It is offered only in regions where all four coverages have current rates.
 
 ## Project Files
 
 ```
 Database-Management-Project/
-├── README.md                    # this file: design overview + how to run
-├── Project_Report.docx          # written project report
-├── car_insurance_erd.drawio     # editable ERD (open with diagrams.net)
-└── autorisk-app/                # the working application
+├── README.md                       # this file: design overview + how to run
+├── Project_Report.docx             # written project report
+├── AutoRisk_Backend_DeepDive.pptx  # presentation slides
+├── car_insurance_erd.drawio        # editable ERD (open with diagrams.net)
+└── autorisk-app/                   # the working application
+    ├── run.ps1 / run.bat           # one-command launcher for Windows (setup, start, reset-db)
     ├── db/
-    │   ├── schema.sql           # CREATE TABLE statements generated from the ERD
-    │   └── seed.sql             # sample data + 2 demo login accounts
-    ├── backend/                 # FastAPI + SQLAlchemy (Python)
-    │   ├── requirements.txt     # Python dependencies
-    │   ├── .env.example         # template for the backend settings file
+    │   ├── schema.sql              # CREATE TABLE statements generated from the ERD
+    │   ├── seed.sql                # sample data + 2 demo login accounts
+    │   └── reset_db.py             # wipes the database and reloads schema + seed
+    ├── backend/                    # FastAPI + SQLAlchemy (Python)
+    │   ├── requirements.txt        # Python dependencies
+    │   ├── .env.example            # template for the backend settings file
     │   └── app/
-    │       ├── main.py          # API entry point, registers all routers
-    │       ├── database.py      # database connection / session setup
-    │       ├── models.py        # one SQLAlchemy class per table
-    │       ├── schemas.py       # Pydantic request/response shapes
-    │       ├── pricing.py       # premium (quote) calculation formula
-    │       ├── auth.py          # password hashing + JWT tokens
-    │       └── routers/         # one file per resource (policyholders, claims, ...)
-    └── frontend/                # React + Vite
-        ├── package.json         # JavaScript dependencies and scripts
-        ├── vite.config.js       # dev server; forwards /api/* to the backend
-        └── src/
-            ├── App.jsx          # page routes
-            ├── api/client.js    # every call to the backend lives here
-            ├── components/      # Sidebar, Layout, KpiCard, StatusPill, ...
-            └── pages/           # Login, Dashboard, Policyholders, Quote, ...
+    │       ├── main.py             # API entry point, registers all routers
+    │       ├── database.py         # database connection / session setup
+    │       ├── models.py           # one SQLAlchemy class per table
+    │       ├── schemas.py          # Pydantic request/response shapes + validation rules
+    │       ├── pricing.py          # premium formula, 6-month term, Full Coverage bundle
+    │       ├── auth.py             # password hashing, JWT tokens, roles, login throttling
+    │       ├── clock.py            # one UTC "today" shared with the database
+    │       └── routers/            # one file per feature:
+    │           ├── policyholders.py, vehicles.py, policies.py, claims.py,
+    │           ├── coverages.py, regions.py, quote.py, dashboard.py, auth.py
+    │           ├── rate_tables.py  # versioned pricing (publish a new rate version)
+    │           ├── risk.py         # claim experience by rating factor
+    │           ├── reports.py      # 5 business reports, preview + CSV download
+    │           └── accounts.py     # staff/customer logins, enable/disable, password reset
+    ├── frontend/                   # React + Vite
+    │   ├── package.json            # JavaScript dependencies and scripts
+    │   ├── vite.config.js          # dev server; forwards /api/* to the backend
+    │   └── src/
+    │       ├── App.jsx             # page routes
+    │       ├── api/client.js       # every call to the backend lives here
+    │       ├── components/         # Sidebar, Layout, KpiCard, PortfolioPanels, ...
+    │       └── pages/              # Dashboard, Quote, Policies, ..., RateTables,
+    │                               # RiskAnalysis, Reports, Accounts
+    ├── data-handoff/               # real-world data (freMTPL2) prepared for our schema
+    │   ├── sample/                 # 200-policy sample as CSV files
+    │   ├── load.sql                # transactional, re-runnable loader (needs psql)
+    │   └── load_with_python.py     # the same loader without psql
+    └── testing/                    # automated tests (unit, API, browser) + test docs
+        ├── run_tests.ps1           # runs the test suites
+        └── docs/                   # test plan, test cases, bug reports, fix report
 ```
 
 ## How to Run the Project (Step by Step)
@@ -192,6 +213,20 @@ The application has three parts, and they must be started in this order:
 Each step below gives commands for **Windows (PowerShell)** and **macOS / Linux (Terminal)**.
 
 > **Windows tip:** extract the project to a short path such as `C:\AutoRisk`. Very long or deeply nested folder paths can make `pip install` fail because of the Windows path-length limit.
+
+### Quick start (Windows, one command)
+
+If you are on Windows and already have Python, Node.js and a database (Step 0 and Step 1 below), the launcher does Steps 2 and 3 for you. In PowerShell, from the `autorisk-app` folder:
+
+```powershell
+.\run.ps1 setup      # once: creates backend\.venv, installs Python + JavaScript packages, creates backend\.env
+                     # -> then open backend\.env and set DATABASE_URL (see Step 2c)
+.\run.ps1            # starts the backend and frontend in two new windows and opens the browser
+```
+
+Other commands: `.\run.ps1 backend`, `.\run.ps1 frontend`, `.\run.ps1 reset-db` (wipes the database and reloads the sample data; asks you to type YES first). If PowerShell refuses to run scripts, use `run.bat` with the same arguments.
+
+The rest of this section explains every step by hand, for Windows, macOS and Linux.
 
 ### Step 0: Install the prerequisites (one time only)
 
@@ -335,14 +370,18 @@ It is working when you see `Local: http://localhost:5173/`. **Leave this termina
 1. Open **http://localhost:5173** in your browser.
 2. Log in with `admin@autorisk.demo` / `admin123`.
 3. Explore the pages:
-   - **Dashboard**: live KPIs (policy counts, premiums, open claims) and recent claims.
-   - **Policyholders**: search, filter by region, and add a new policyholder.
-   - **Vehicles, Policies, Claims, Coverage, Regions**: data read directly from PostgreSQL.
-   - **Quote**: calculates a premium using the regional rate table and the pricing formula.
+   - **Dashboard**: today's KPIs (active policies, premium, open claims, claims paid, policyholders), the latest claims, and a **Portfolio** section over every policy ever written: loss ratio, claims paid by policy year (hover a bar for details) and a table by region.
+   - **New Quote**: prices a driver for a **6-month term** from the regional rate tables. Pick one coverage, or **Full Coverage** (all four coverages together, 10% bundle discount) to see an itemized breakdown.
+   - **Policies, Policyholders, Vehicles, Claims, Coverage, Regions**: data read live from PostgreSQL. Policyholders can be searched, filtered by region and added.
+   - **Rate Tables**: every price version per region and coverage (Current, Scheduled, Expired). **Revise** publishes a new version from a chosen date; the old one expires that day, and policies already sold keep their price.
+   - **Risk Analysis**: claim frequency, average claim cost and loss ratio by driver age, experience, vehicle power, vehicle age, bonus-malus, region and risk tier.
+   - **Reports**: claims register, payments ledger, policy register, premium & claims by region, and coverage mix, each with a date filter, a preview and **Download CSV**.
+   - **Accounts**: every login with its role and last sign-in; add staff or customer accounts, enable/disable them, reset passwords.
+4. Log out and log in as the customer `jordan.reyes@example.com` / `demo1234` to see the customer view: only their own records, and no access to the admin pages.
+
+**Staff roles:** an `Analyst` can view every admin page but cannot change rates or accounts. `Administrator` and `Manager` can. The demo admin is an `Administrator`. You can create an Analyst on the Accounts page to try it.
 
 The frontend sends every `/api/...` request to the backend on port 8000 (configured in `vite.config.js`), so both servers from Steps 2 and 3 must be running.
-
-**Status of the remaining pages:** Rate Tables, Risk Analysis, Reports and Accounts already have their database tables. Their pages show a "Coming Soon" placeholder.
 
 ### Step 5: Stop the application
 
@@ -359,7 +398,47 @@ cd autorisk-app/frontend
 npm run dev
 ```
 
-To reset the database to the original sample data, re-run Steps 1b and 1c.
+To reset the database to the original sample data, re-run Steps 1b and 1c (on Windows: `.\run.ps1 reset-db`).
+
+### Step 6 (optional): Load real insurance data
+
+`autorisk-app/data-handoff/` contains a 200-policy sample of **freMTPL2**, a public French motor-insurance dataset, already cleaned and mapped to our schema (see `data-handoff/README.md` for how it was cleaned). It adds 22 French regions, 200 historical policies with their drivers and vehicles, 111 paid claims, and Liability rates for every region. Imported rows use negative IDs, so they never clash with the app's own rows, and the app shows them with an "H" (for example `POL-H0001`).
+
+Load it **after** Step 1 (schema + seed). Either:
+
+```bash
+# with psql: run from the sample folder, because load.sql reads the CSV files next to it
+cd autorisk-app/data-handoff/sample
+psql -U postgres -h localhost -d autorisk -f ../load.sql
+```
+
+or, without psql, with the backend's Python (it uses `DATABASE_URL` from `backend/.env`):
+
+```powershell
+cd autorisk-app
+backend\.venv\Scripts\python.exe data-handoff\load_with_python.py data-handoff\sample     # Windows
+backend/.venv/bin/python data-handoff/load_with_python.py data-handoff/sample             # macOS / Linux
+```
+
+The load runs in one transaction (all rows or none) and is safe to run twice: the second run changes nothing. Afterwards the Dashboard's Portfolio section, Risk Analysis and Reports include the historical data.
+
+### Step 7 (optional): Run the automated tests
+
+The project has about 300 automated tests: unit tests for the pricing formula, API tests for every endpoint, and browser tests (Playwright) for the main pages. API and browser tests use their **own throwaway PostgreSQL in Docker**, never your real database. Details are in `autorisk-app/testing/README.md`.
+
+Windows (from `autorisk-app`):
+```powershell
+.\testing\run_tests.ps1 setup     # once: installs pytest, Playwright and Chromium
+.\testing\run_tests.ps1 unit      # pricing unit tests only: no Docker needed, under 1 second
+# start Docker Desktop, then:
+.\testing\run_tests.ps1           # everything; HTML report in testing\reports\report.html
+```
+
+macOS / Linux (unit tests, from `autorisk-app` with the backend virtual environment active):
+```bash
+pip install -r testing/requirements-test.txt
+cd testing && python -m pytest unit
+```
 
 ### Optional: Use a cloud database (Neon) instead of a local PostgreSQL
 
@@ -388,6 +467,9 @@ To reset the database to the original sample data, re-run Steps 1b and 1c.
 | The login page says "Failed to fetch" or shows a network error | The backend is not running. Start it (Step 2d) and check http://localhost:8000/api/health. |
 | `Port 8000` or `5173` is already in use | Close the other program using it, or start uvicorn with `--port 8001` and change the `target` in `frontend/vite.config.js` to match. |
 | `npm` is not recognised | Install Node.js (Step 0), then open a new terminal. |
+| A login says "value is not a valid email address" | Type the full email address, for example `admin@autorisk.demo`, not just `admin`. |
+| Full Coverage is missing from the Coverage dropdown | That region does not have current rates for all four coverages. The seed data has them for Region A, B and C; check the Rate Tables page. |
+| `.\testing\run_tests.ps1` cannot start the test database | Start Docker Desktop and wait until it says it is running, then try again. Unit tests (`run_tests.ps1 unit`) do not need Docker. |
 
 ## Viewing and Editing the ERD
 
@@ -398,14 +480,18 @@ Open `car_insurance_erd.drawio` with either of these tools:
 
 ## Tech/Tools
 
-- **Database:** PostgreSQL (`db/schema.sql`, `db/seed.sql`)
-- **Backend:** Python, FastAPI, SQLAlchemy, Pydantic, JWT authentication (python-jose, passlib/bcrypt)
+- **Database:** PostgreSQL, local or hosted on Neon (`db/schema.sql`, `db/seed.sql`)
+- **Backend:** Python, FastAPI, SQLAlchemy, Pydantic, Uvicorn, JWT authentication (python-jose, passlib/bcrypt)
 - **Frontend:** React 18, React Router, Vite
+- **Data preparation:** pandas, SQLite (pre-validation), PostgreSQL `COPY`
+- **Testing:** pytest, FastAPI TestClient, Playwright (Chromium), Docker
 - **Diagramming:** draw.io (diagrams.net)
 - **Data modeling:** Entity-Relationship Diagram and relational schema design
 
 ## Project Status
 
 - Database design (ERD) and PostgreSQL schema: complete.
-- Full-stack application: login, dashboard, policyholders, vehicles, policies, claims, coverage, regions and quote calculator all work end to end (React → FastAPI → PostgreSQL).
-- Rate Tables, Risk Analysis, Reports and Accounts pages: the database tables exist, and the pages show a "Coming Soon" placeholder.
+- Full-stack application: every page works end to end (React → FastAPI → PostgreSQL): login, dashboard with portfolio analytics, quotes (single coverage or Full Coverage, 6-month term), policyholders, vehicles, policies, claims, coverage, regions, rate tables, risk analysis, reports and accounts.
+- Security: every data endpoint requires a login; customers only see their own records; staff roles (Analyst read-only, Administrator/Manager full access); login throttling.
+- Real-world data: a cleaned 200-policy sample of the freMTPL2 dataset can be loaded (Step 6).
+- Testing: about 300 automated tests (unit, API, browser), all passing. 23 bugs found during testing are documented and fixed (`autorisk-app/testing/docs/`).

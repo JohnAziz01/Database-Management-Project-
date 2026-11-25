@@ -11,6 +11,10 @@ const initialForm = {
   coverage_id: "",
 };
 
+// Select value used for the Full Coverage bundle (all coverages together).
+const FULL = "full";
+const optionValue = (o) => (o.full_coverage ? FULL : String(o.coverage_id));
+
 export default function Quote() {
   // BUG-009 fix: instead of every region x every coverage, load only the
   // pairs that have a current rate table, so every choice can be priced.
@@ -33,7 +37,7 @@ export default function Quote() {
     setForm((prev) => {
       const next = { ...prev, [field]: value };
       // Changing region clears a coverage that isn't priced in the new region.
-      if (field === "region_id" && !options.some((o) => String(o.region_id) === value && String(o.coverage_id) === prev.coverage_id)) {
+      if (field === "region_id" && !options.some((o) => String(o.region_id) === value && optionValue(o) === prev.coverage_id)) {
         next.coverage_id = "";
       }
       return next;
@@ -52,7 +56,9 @@ export default function Quote() {
         vehicle_manufacture_year: Number(form.vehicle_manufacture_year),
         vehicle_power_kw: Number(form.vehicle_power_kw),
         region_id: Number(form.region_id),
-        coverage_id: Number(form.coverage_id),
+        ...(form.coverage_id === FULL
+          ? { coverage_id: null, full_coverage: true }
+          : { coverage_id: Number(form.coverage_id), full_coverage: false }),
       });
       setResult(quote);
     } catch (err) {
@@ -155,8 +161,8 @@ export default function Quote() {
               >
                 <option value="">{form.region_id ? "Select…" : "Choose a region first"}</option>
                 {coverages.map((c) => (
-                  <option key={c.coverage_id} value={c.coverage_id}>
-                    {c.coverage_name}
+                  <option key={optionValue(c)} value={optionValue(c)}>
+                    {c.full_coverage ? "Full Coverage (all coverages, 10% off)" : c.coverage_name}
                   </option>
                 ))}
               </select>
@@ -183,15 +189,34 @@ export default function Quote() {
             <>
               <div className="result-hero">
                 <div className="result-label">Estimated Premium</div>
-                <div className="result-value data">${result.estimated_premium.toFixed(2)} / year</div>
+                <div className="result-value data">${result.estimated_premium.toFixed(2)} / {result.term_months} months</div>
+                {result.full_coverage && <div className="result-label">Full Coverage bundle</div>}
               </div>
+              {result.full_coverage && (
+                <div className="metric-list" style={{ marginBottom: 18 }}>
+                  {result.coverage_breakdown.map((c) => (
+                    <div className="metric-row" key={c.coverage_id}>
+                      <span className="m-label">{c.coverage_name}</span>
+                      <span className="m-value data">${c.estimated_premium.toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="metric-row">
+                    <span className="m-label">Subtotal</span>
+                    <span className="m-value data">${result.subtotal_premium.toFixed(2)}</span>
+                  </div>
+                  <div className="metric-row">
+                    <span className="m-label">Bundle Discount ({Math.round(result.discount_rate * 100)}%)</span>
+                    <span className="m-value data">−${result.discount_amount.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
               <div className="metric-list">
                 <div className="metric-row">
                   <span className="m-label">Risk Level</span>
                   <span className="m-value">{result.risk_level}</span>
                 </div>
                 <div className="metric-row">
-                  <span className="m-label">Estimated Claim Frequency</span>
+                  <span className="m-label">Estimated Claim Frequency (per {result.term_months} months)</span>
                   <span className="m-value data">{(result.estimated_claim_frequency * 100).toFixed(2)}%</span>
                 </div>
                 <div className="metric-row">

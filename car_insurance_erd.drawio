@@ -1,0 +1,92 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Car Insurance ERD" id="erd1">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="region" value="&lt;b&gt;REGION&lt;/b&gt;&lt;br&gt;PK region_id INT&lt;br&gt;name VARCHAR(100)&lt;br&gt;region_type VARCHAR(20)&lt;br&gt;FK parent_region_id INT (self)&lt;br&gt;base_risk_factor DECIMAL(5,2)" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="policyholder" value="&lt;b&gt;POLICYHOLDER&lt;/b&gt;&lt;br&gt;PK policyholder_id INT&lt;br&gt;first_name VARCHAR(50)&lt;br&gt;last_name VARCHAR(50)&lt;br&gt;date_of_birth DATE&lt;br&gt;license_number VARCHAR(30) UNIQUE&lt;br&gt;license_issue_date DATE&lt;br&gt;email VARCHAR(100)&lt;br&gt;phone VARCHAR(20)&lt;br&gt;FK region_id INT&lt;br&gt;risk_tier VARCHAR(10)&lt;br&gt;created_at TIMESTAMP" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="340" y="40" width="240" height="220" as="geometry" />
+        </mxCell>
+
+        <mxCell id="vehicle" value="&lt;b&gt;VEHICLE&lt;/b&gt;&lt;br&gt;PK vehicle_id INT&lt;br&gt;FK policyholder_id INT&lt;br&gt;make VARCHAR(50)&lt;br&gt;model VARCHAR(50)&lt;br&gt;manufacture_year INT&lt;br&gt;engine_power_kw INT&lt;br&gt;vin VARCHAR(17) UNIQUE&lt;br&gt;usage_type VARCHAR(20)" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="640" y="40" width="220" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="coverage" value="&lt;b&gt;COVERAGE&lt;/b&gt;&lt;br&gt;PK coverage_id INT&lt;br&gt;coverage_name VARCHAR(50)&lt;br&gt;description TEXT&lt;br&gt;is_mandatory BOOLEAN" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="920" y="40" width="200" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ratetable" value="&lt;b&gt;RATE_TABLE&lt;/b&gt;&lt;br&gt;PK rate_table_id INT&lt;br&gt;FK region_id INT&lt;br&gt;FK coverage_id INT&lt;br&gt;effective_date DATE&lt;br&gt;expiry_date DATE NULL&lt;br&gt;base_rate DECIMAL(10,2)&lt;br&gt;age_factor_young DECIMAL(4,2)&lt;br&gt;age_factor_senior DECIMAL(4,2)&lt;br&gt;vehicle_power_factor DECIMAL(4,2)&lt;br&gt;bonus_malus_step DECIMAL(4,2)" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="920" y="220" width="240" height="210" as="geometry" />
+        </mxCell>
+
+        <mxCell id="policy" value="&lt;b&gt;POLICY&lt;/b&gt;&lt;br&gt;PK policy_id INT&lt;br&gt;FK policyholder_id INT&lt;br&gt;FK vehicle_id INT&lt;br&gt;start_date DATE&lt;br&gt;end_date DATE&lt;br&gt;status VARCHAR(20)&lt;br&gt;bonus_malus_coefficient DECIMAL(4,2)&lt;br&gt;total_premium DECIMAL(10,2)&lt;br&gt;created_at TIMESTAMP" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="340" y="320" width="240" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="policycoverage" value="&lt;b&gt;POLICY_COVERAGE&lt;/b&gt;&lt;br&gt;PK,FK policy_id INT&lt;br&gt;PK,FK coverage_id INT&lt;br&gt;coverage_limit DECIMAL(12,2)&lt;br&gt;deductible DECIMAL(10,2)&lt;br&gt;coverage_premium DECIMAL(10,2)" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="640" y="320" width="220" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="claim" value="&lt;b&gt;CLAIM&lt;/b&gt;&lt;br&gt;PK claim_id INT&lt;br&gt;FK policy_id INT&lt;br&gt;claim_date DATE&lt;br&gt;claim_type VARCHAR(30)&lt;br&gt;description TEXT&lt;br&gt;status VARCHAR(20)&lt;br&gt;fault_percentage DECIMAL(5,2)&lt;br&gt;reported_at TIMESTAMP" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="340" y="580" width="220" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="claimpayment" value="&lt;b&gt;CLAIM_PAYMENT (weak)&lt;/b&gt;&lt;br&gt;PK,FK claim_id INT&lt;br&gt;PK payment_seq INT&lt;br&gt;payment_date DATE&lt;br&gt;amount DECIMAL(10,2)&lt;br&gt;payment_method VARCHAR(20)&lt;br&gt;status VARCHAR(20)" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="220" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" value="parent of" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="region" target="region">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="region" target="policyholder">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="region" target="ratetable">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="policyholder" target="vehicle">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="policyholder" target="policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="vehicle" target="policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="coverage" target="ratetable">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="coverage" target="policycoverage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="policy" target="policycoverage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="policy" target="claim">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERmany;endFill=0;" edge="1" parent="1" source="claim" target="claimpayment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="priced via date-range lookup (no FK)" style="edgeStyle=entityRelationEdgeStyle;html=1;dashed=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="ratetable" target="policycoverage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="account" value="&lt;b&gt;ACCOUNT&lt;/b&gt;&lt;br&gt;PK account_id INT&lt;br&gt;email VARCHAR(100) UNIQUE&lt;br&gt;password_hash VARCHAR(255)&lt;br&gt;account_type VARCHAR(10)&lt;br&gt;FK policyholder_id INT (nullable, customer only)&lt;br&gt;admin_role VARCHAR(20) (nullable, admin only)&lt;br&gt;is_active BOOLEAN&lt;br&gt;created_at TIMESTAMP&lt;br&gt;last_login_at TIMESTAMP&lt;br&gt;&lt;i&gt;CHECK: customer =&amp;gt; policyholder_id set, admin_role null&lt;/i&gt;&lt;br&gt;&lt;i&gt;CHECK: admin =&amp;gt; admin_role set, policyholder_id null&lt;/i&gt;" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacingLeft=6;spacingTop=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="40" width="280" height="260" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e13" value="0..1" style="edgeStyle=entityRelationEdgeStyle;html=1;startArrow=ERone;startFill=0;endArrow=ERzeroToOne;endFill=0;" edge="1" parent="1" source="policyholder" target="account">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

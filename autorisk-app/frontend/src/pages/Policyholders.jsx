@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { formatId } from "../utils/formatId";
 
 export default function Policyholders() {
   const [policyholders, setPolicyholders] = useState([]);
@@ -114,7 +115,7 @@ export default function Policyholders() {
             ) : (
               policyholders.map((p) => (
                 <tr key={p.policyholder_id}>
-                  <td className="cell-strong">PH-{String(p.policyholder_id).padStart(4, "0")}</td>
+                  <td className="cell-strong">{formatId("PH", p.policyholder_id)}</td>
                   <td>
                     {p.first_name} {p.last_name}
                   </td>

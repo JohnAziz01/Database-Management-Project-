@@ -17,7 +17,7 @@ from datetime import date
 
 import pytest
 
-from app.pricing import _age, calculate_quote
+from app.pricing import _age, calculate_full_coverage_quote, calculate_quote
 
 pytestmark = pytest.mark.unit
 
@@ -116,11 +116,13 @@ class TestVehiclePowerFactor:
 class TestPremium:
     def test_hand_calculated_example(self):
         # 450 base * 1.00 age * 1.05^2 (138 kW) * 1.10 region * 0.90 bonus-malus
-        # = 450 * 1.1025 * 1.10 * 0.90 = 491.16375 -> 491.16
+        # = 450 * 1.1025 * 1.10 * 0.90 = 491.16375 per year
+        # x 6/12 for the 6-month term = 245.581875 -> 245.58
         result = quote(
             vehicle_power_kw=138, region_base_risk_factor=1.10, bonus_malus_coefficient=0.90
         )
-        assert result["estimated_premium"] == 491.16
+        assert result["estimated_premium"] == 245.58
+        assert result["term_months"] == 6
 
     def test_young_driver_pays_more_than_standard(self):
         young = quote(date_of_birth=born_years_ago(20))["estimated_premium"]
@@ -134,7 +136,8 @@ class TestPremium:
 
     def test_frequency_capped_at_35_percent(self):
         result = quote(date_of_birth=born_years_ago(19), bonus_malus_coefficient=3.5)
-        assert result["estimated_claim_frequency"] == 0.35
+        # annual frequency capped at 35 %, then x 6/12 for the term
+        assert result["estimated_claim_frequency"] == 0.175
 
     def test_pure_premium_is_frequency_times_severity(self):
         r = quote(vehicle_power_kw=138)
@@ -209,3 +212,55 @@ class TestFixedPricingBugs:
         except ValueError:
             return  # correct behaviour: the input was rejected
         assert False, f"accepted; premium = {result['estimated_premium']}"
+
+
+# ------------------------------------------------------------- Full Coverage
+def component(coverage_id, premium, base, freq, pure):
+    return dict(
+        coverage_id=coverage_id, coverage_name=f"C{coverage_id}",
+        estimated_premium=premium, base_rate=base, estimated_claim_frequency=freq,
+        pure_premium=pure, age_factor=1.0, vehicle_power_factor=1.05,
+        experience_factor=1.0, region_factor=1.10, bonus_malus_adjustment=0.90,
+    )
+
+
+def test_full_coverage_premium_is_discounted_sum():
+    q = calculate_full_coverage_quote([component(1, 500, 450, 0.1, 50), component(2, 300, 320, 0.2, 60)])
+    assert q["subtotal_premium"] == 800
+    assert q["estimated_premium"] == 720.00          # 800 * 0.90
+    assert q["discount_amount"] == 80.00
+    assert q["base_rate"] == 770
+
+
+def test_full_coverage_frequency_is_chance_of_any_claim():
+    q = calculate_full_coverage_quote([component(1, 500, 450, 0.1, 50), component(2, 300, 320, 0.2, 60)])
+    assert q["estimated_claim_frequency"] == 0.28     # 1 - 0.9 * 0.8
+    assert q["pure_premium"] == 110                   # expected losses add up
+    assert q["estimated_claim_severity"] == round(110 / 0.28, 2)
+
+
+def test_full_coverage_risk_level_ignores_discount():
+    # 70 per 6 months = 140/yr = 1.4x the annual base -> Medium, even though
+    # the discounted price works out below 1.4x
+    q = calculate_full_coverage_quote([component(1, 70, 100, 0.1, 10)])
+    assert q["estimated_premium"] < 70
+    assert q["risk_level"] == "Medium"
+
+
+def test_full_coverage_needs_components():
+    with pytest.raises(ValueError):
+        calculate_full_coverage_quote([])
+
+
+# ------------------------------------------------------------- 6-month term
+def test_term_premium_is_half_the_annual_rate():
+    # all factors 1.0: annual premium = base rate 450, 6-month premium = 225
+    r = quote(vehicle_power_factor_table=1.00, bonus_malus_coefficient=1.0)
+    assert r["estimated_premium"] == 225.00
+
+
+def test_risk_level_uses_annual_figures():
+    # 6-month premium is 0.7x the annual base, but annually it's 1.4x -> Medium
+    r = quote(vehicle_power_factor_table=1.00, bonus_malus_coefficient=1.40)
+    assert r["estimated_premium"] == 315.00
+    assert r["risk_level"] == "Medium"
